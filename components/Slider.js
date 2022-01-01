@@ -6,19 +6,19 @@ import { useDispatchContext } from '../context/useStateContext';
 //   return `${value}°C`;
 // }
 
-export default function SliderComponent({ title, setValues, values }) {
+export default function SliderComponent({ title, setState, values }) {
   const dispatch = useDispatchContext();
   const handleChange = (event, newValue) => {
     if (title === 'Age') {
-      setValues((prev) => ({ ...prev, age: newValue, flag: true }));
-      // dispatch({ type: 'AGE', payload: newValue });
+      setState((prev) => ({ ...prev, age: newValue, flag: true }));
+      dispatch({ type: 'AGE', payload: newValue });
     } else {
-      setValues((prev) => ({
+      setState((prev) => ({
         ...prev,
         yearsActive: newValue,
         flag: true,
       }));
-      // dispatch({ type: 'YEARS_ACTIVE', payload: newValue });
+      dispatch({ type: 'YEARS_ACTIVE', payload: newValue });
     }
   };
 

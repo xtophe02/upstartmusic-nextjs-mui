@@ -19,51 +19,65 @@ import {
   useDispatchContext,
   useStateContext,
 } from '../context/useStateContext';
+import { getAllArtists } from '../utils/getData';
+const buildParams = (values) => {
+  const params = {};
+  if (values.page) {
+    params.page = values.page;
+  }
+  if (values.age) {
+    params.age = JSON.stringify(values.age);
+  }
+  if (values.yearsActive) {
+    params.yearsActive = JSON.stringify(values.yearsActive);
+  }
+  if (values.sort) {
+    params.sort = values.sort;
+  }
+  if (values.order) {
+    params.order = values.order;
+  }
+  if (values.text) {
+    params.text = values.text;
+  }
+  return params;
+};
 
 const fetchDataCall = async (values) => {
-  const { page, age, sort, order, yearsActive, text } = values;
+  const params = buildParams(values);
 
   const { data } = await axios.get('/api/artists/', {
-    params: {
-      page,
-      sort,
-      order,
-      text,
-      age: JSON.stringify(age),
-      yearsActive: JSON.stringify(yearsActive),
-    },
+    params,
   });
 
   return data;
 };
 
-export default function IndexPage({ data }) {
+export default function IndexPage(props) {
+  const { data } = props;
+
   const initValues = useStateContext();
   const dispatch = useDispatchContext();
   const [state, setState] = useState({
-    artists: data.artists,
-    total: data.total.length,
-  });
-  // console.log(initValues);
-  const [values, setValues] = useState({
     ...initValues,
-    flag: false,
     text: '',
-    age: [data.age[0], data.age[1]],
-    yearsActive: [data.yearsActive[0], data.yearsActive[1]],
+    artists: data.artists,
+    pageCount: Math.ceil(Number(data.artistsCount) / 10),
+    age: data.age,
+    yearsActive: data.yearsActive,
+    flag: false,
   });
 
   useEffect(() => {
-    const fetchData = async (values) => {
-      const res = await fetchDataCall(values);
+    const fetchData = async (state) => {
+      const res = await fetchDataCall(state);
 
-      setState({ artists: res.artists, total: Math.ceil(Number(res.total)) });
+      setState((prev) => ({ ...prev, artists: res.artists }));
     };
 
-    fetchData(values);
-  }, [values.sort, values.order, values.page]);
+    fetchData(state);
+  }, [state.sort, state.order, state.page]);
   // console.log('STATE', state);
-  const pageCount = Math.ceil(Number(state.total) / 10);
 
   return (
     <Layout>
@@ -77,39 +91,33 @@ export default function IndexPage({ data }) {
               <TextField
                 id='outlined-basic'
                 label='Search Name'
-                value={values.text}
+                value={state.text}
                 variant='outlined'
                 onChange={(e) =>
-                  setValues((prev) => ({
+                  setState((prev) => ({
                     ...prev,
                     flag: true,
                     text: e.target.value,
                   }))
                 }
               />
-              <SliderComponent
-                title='Age'
-                values={values}
-                setValues={setValues}
-              />
+              <SliderComponent title='Age' values={state} setState={setState} />
               <SliderComponent
                 title='Years Active'
-                values={values}
-                setValues={setValues}
+                values={state}
+                setState={setState}
               />
-              <SelectComponent values={values} setValues={setValues} />
+              <SelectComponent values={state} setValues={setState} />
               <Button
                 variant='contained'
-                disabled={!values.flag}
+                disabled={!state.flag}
                 onClick={async () => {
-                  dispatch({ type: 'SLIDER_FILTER', payload: values });
-
-                  const res = await fetchDataCall(values);
-
-                  setState({
+                  const res = await fetchDataCall(state);
+                  setState((prev) => ({
+                    ...prev,
                     artists: res.artists,
-                    total: Math.ceil(Number(res.total)),
-                  });
+                    pageCount: Math.ceil(Number(res.artistsCount) / 10),
+                  }));
                 }}
               >
                 Submit
@@ -118,20 +126,20 @@ export default function IndexPage({ data }) {
                 variant='contained'
                 color='error'
                 onClick={() => {
-                  setValues({
+                  dispatch({
+                    type: 'CLEAR',
+                    payload: { age: data.age, yearsActive: data.yearsActive },
+                  });
+                  setState({
                     text: '',
                     flag: false,
                     page: 1,
                     sort: 'name',
                     order: '1',
-                    age: [0, 50],
-                    yearsActive: [0, 50],
-                  });
-                  dispatch({ type: 'CLEAR' });
-
-                  setState({
+                    age: data.age,
+                    yearsActive: data.yearsActive,
                     artists: data.artists,
-                    total: data.total.length,
+                    pageCount: Math.ceil(Number(data.artistsCount) / 10),
                   });
                 }}
               >
@@ -143,13 +151,13 @@ export default function IndexPage({ data }) {
         <Grid item xs={12} md={8}>
           <Box sx={{ display: 'flex' }}>
             <Pagination
-              count={pageCount}
+              count={state.pageCount}
               color='primary'
               sx={{ paddingBottom: 2, mx: 'auto' }}
-              page={values.page}
+              page={state.page}
               onChange={(e, v) => {
-                setValues((prev) => ({ ...prev, page: v }));
                 dispatch({ type: 'PAGE', payload: v });
+                setState((prev) => ({ ...prev, page: v }));
               }}
             />
           </Box>
@@ -161,10 +169,18 @@ export default function IndexPage({ data }) {
   );
 }
 export async function getStaticProps(context) {
-  const { data } = await axios.get(`${process.env.API_URL}/api/artists`);
+  // const { data } = await axios.get(`${process.env.API_URL}/api/artists`);
+  try {
+    const { artistsCount, artists, age, yearsActive } = await getAllArtists();
 
-  return {
-    props: { data },
-    revalidate: 10,
-  };
+    return {
+      props: {
+        data: { artistsCount, artists: JSON.parse(artists), age, yearsActive },
+      },
+      revalidate: 10,
+    };
+  } catch (error) {
+    console.log(error);
+    return { props: {} };
+  }
 }

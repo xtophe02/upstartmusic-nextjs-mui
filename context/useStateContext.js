@@ -24,10 +24,10 @@ const reducer = (state, action) => {
     case 'YEARS_ACTIVE':
       return { ...state, yearsActive: action.payload };
     case 'CLEAR': {
-      return initValues;
+      return { ...initValues, ...action.payload };
     }
-    case 'SLIDER_FILTER':
-      return { ...state, ...action.payload };
+    // case 'SLIDER_FILTER':
+    //   return { ...state, ...action.payload };
     default:
       throw new Error(`Unknown action: ${action.type}`);
   }

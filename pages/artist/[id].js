@@ -6,8 +6,10 @@ import { red } from '@mui/material/colors';
 import { useRouter } from 'next/router';
 import { useContext } from 'react';
 import NotificationContext from '../../store/notification-context';
+import { getArtistById, getAllArtistsId } from '../../utils/getData';
 
-export default function SlugPage({ data }) {
+export default function SlugPage(props) {
+  const { artist } = props;
   const router = useRouter();
   const notificationCtx = useContext(NotificationContext);
   const deleteArtist = async (id) => {
@@ -50,7 +52,7 @@ export default function SlugPage({ data }) {
           delete
         </Button>
       </Box>
-      <ArtistCard data={data} />
+      <ArtistCard data={artist} />
     </Layout>
   );
 }
@@ -58,20 +60,29 @@ export async function getStaticPaths() {
   // const paths = data.products.map((product) => ({
   //   params: { slug: product.slug },
   // }));
-  const { data } = await axios.get(`${process.env.API_URL}/api/artists`);
-  const paths = data.total.map(({ _id }) => ({ params: { id: _id } }));
+  // const { data } = await axios.get(`${process.env.API_URL}/api/artists`);
+  const ids = await getAllArtistsId();
+  // const idsJson = JSON.parse(ids);
+
+  const paths = JSON.parse(ids).map(({ _id }) => ({ params: { id: _id } }));
+
   return {
     paths,
-    fallback: 'blocking', // See the "fallback" section below
+
+    // fallback: 'blocking',
+    fallback: false,
   };
 }
 
 export async function getStaticProps(context) {
-  const { data } = await axios.get(
-    `${process.env.API_URL}/api/artists/${context.params.id}`
-  );
+  // const { data } = await axios.get(
+  //   `${process.env.API_URL}/api/artists/${context.params.id}`
+  // );
+
+  const artist = await getArtistById(context.params.id);
+
   return {
-    props: { data },
+    props: { artist: JSON.parse(artist) },
     revalidate: 10,
   };
 }
